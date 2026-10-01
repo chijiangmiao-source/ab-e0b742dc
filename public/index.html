@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>冗余离散链路瞬态复核台</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>冗余离散链路瞬态复核台</h1>
+    <p class="subtitle">惯性延迟事件仿真 · 同刻稳定处理 · 待发事件撤销 · 短脉冲 / 振荡证据</p>
+  </header>
+
+  <main>
+    <section class="card" id="entry-card">
+      <div class="card-head">
+        <h2>1. 链路录入</h2>
+        <div class="head-actions">
+          <button type="button" id="btn-example" class="btn ghost">载入示例（宽2短脉冲）</button>
+          <button type="button" id="btn-clear" class="btn ghost danger">清空草稿</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-head">
+          <h3>门（NOT / AND / OR，最多 12 个，标识唯一）</h3>
+          <button type="button" id="btn-add-gate" class="btn small">添加门</button>
+        </div>
+        <table class="grid" id="gate-table">
+          <thead>
+            <tr><th style="width:18%">唯一标识</th><th style="width:14%">类型</th><th style="width:16%">惯性延迟（正整数刻度）</th><th>输入连线（逗号分隔）</th><th style="width:6%"></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="block">
+        <div class="block-head">
+          <h3>外部边沿表</h3>
+          <button type="button" id="btn-add-edge" class="btn small">添加边沿</button>
+        </div>
+        <table class="grid" id="edge-table">
+          <thead>
+            <tr><th>外部输入连线</th><th style="width:20%">刻度（非负整数）</th><th style="width:20%">目标值 0/1</th><th style="width:6%"></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="block">
+        <label class="field-label" for="monitored">受监控输出（连线名，逗号分隔）</label>
+        <input type="text" id="monitored" placeholder="例如：g2, crit_out" />
+      </div>
+
+      <div class="block actions">
+        <button type="button" id="btn-submit" class="btn primary">提交复核</button>
+        <span id="form-hint" class="hint"></span>
+      </div>
+    </section>
+
+    <section class="card" id="result-card" hidden>
+      <div class="card-head"><h2>2. 复核结论</h2></div>
+
+      <div id="error-panel" class="panel error-panel" hidden>
+        <h3>录入校验未通过 — 旧结论已清除</h3>
+        <ul id="error-list"></ul>
+      </div>
+
+      <div id="conclusion-panel" hidden>
+        <div class="badge-row">
+          <span id="status-badge" class="badge"></span>
+          <span id="dup-badge" class="badge neutral hidden"></span>
+        </div>
+
+        <div class="panel">
+          <h3>规范化配置与重复识别</h3>
+          <p class="hint">规范化后按门值与相对待发事件比较；以下签名相同即视为重复配置。</p>
+          <pre id="canonical-view" class="code"></pre>
+        </div>
+
+        <div class="panel">
+          <h3>静稳结论（外部边沿窗口结束后）</h3>
+          <div id="summary"></div>
+          <table class="grid compact" id="final-table">
+            <thead><tr><th>门</th><th>类型</th><th>延迟</th><th>初值（第0刻）</th><th>最终值</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="panel" id="pulse-panel">
+          <h3>关键输出短脉冲（宽度 ≤ 2 刻度）</h3>
+          <div id="pulse-list"></div>
+        </div>
+
+        <div class="panel" id="cancel-panel">
+          <h3>惯性延迟待发事件撤销记录</h3>
+          <p class="hint">被撤销 / 被取代的待发翻转不会落入输出轨迹。</p>
+          <table class="grid compact" id="cancel-table">
+            <thead><tr><th>刻度</th><th>门</th><th>事件标识</th><th>原定生效刻</th><th>目标值</th><th>撤销原因</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="panel" id="osc-panel" hidden>
+          <h3>持续振荡：可回放前缀与循环</h3>
+          <p class="hint" id="osc-meta"></p>
+          <div class="replay-controls">
+            <button type="button" id="btn-replay" class="btn small">▶ 回放</button>
+            <button type="button" id="btn-step" class="btn small">单步</button>
+            <button type="button" id="btn-reset-replay" class="btn small">回到前缀起点</button>
+            <span id="replay-pos" class="hint"></span>
+          </div>
+          <table class="grid compact" id="frame-table">
+            <thead><tr><th>段</th><th>刻度</th><th>稳定门值</th><th>相对待发事件（标识:目标@相对刻）</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <h3>已交付事件轨迹</h3>
+          <table class="grid compact" id="event-table">
+            <thead><tr><th>刻度</th><th>事件标识</th><th>门</th><th>翻转为</th><th>直接诱因</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
